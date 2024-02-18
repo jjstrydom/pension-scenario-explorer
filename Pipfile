@@ -6,10 +6,9 @@ name = "pypi"
 [packages]
 jupyter = "*"
 numpy = "*"
-bokeh = "*"
-holoviews = "*"
+plotly = "*"
 
 [dev-packages]
 
 [requires]
-python_version = "3.7"
+python_version = "3.11"
