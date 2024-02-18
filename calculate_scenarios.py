@@ -5,7 +5,7 @@ import plotly.express as px
 from typing import Tuple
 
 
-def load_configs(config_file : str = 'config.json') -> dict:
+def load_configs(config_file: str = 'config.json') -> dict:
     config = json.load(open(config_file))
     return config
 
@@ -23,6 +23,16 @@ def calculate_parameters_monthly(parameters_yearly: dict) -> dict:
     parameters_monthly['growth_mean'] = parameters_yearly['growth_mean']/12
     parameters_monthly['growth_std'] = parameters_yearly['growth_std']/np.sqrt(12)
     return parameters_monthly
+
+
+def plot_scenarios(scenarios: np.array, age_starting: int, age_sim_end: int, percentiles: list = [1,10,25,50,75,90,99]) -> None:
+    scenario_stats = np.percentile(scenarios, percentiles, axis=1)
+    plot_data = pd.DataFrame(scenario_stats.T, columns = [f"{p}" for p in percentiles])
+    plot_data.head()
+    plot_data['age'] = [f"{y:04}-{m:02}" for y in range(age_starting, age_sim_end+1) for m in range(1,13)][0:len(plot_data)]
+    plot_data = pd.melt(plot_data, id_vars=['age'], var_name='percentile', value_name='value')
+    fig = px.line(plot_data, x='age', y='value', color='percentile')
+    fig.write_html("result.html")
 
 
 def calculate_scenarios():
@@ -44,14 +54,7 @@ def calculate_scenarios():
         else:
             scenarios[p,:] = (scenarios[p-1,:] - config['retirement_drawdown_monthly']) * (1+delta_growth[p,:])
     scenarios[scenarios < 0] = 0
-    percentiles = [1,10,25,50,75,90,99]
-    scenario_stats = np.percentile(scenarios, percentiles, axis=1)
-    plot_data = pd.DataFrame(scenario_stats.T, columns = [f"{p}" for p in percentiles])
-    plot_data.head()
-    plot_data['age'] = [f"{y:04}-{m:02}" for y in range(config['age_starting'], config['age_sim_end']+1) for m in range(1,13)][0:len(plot_data)]
-    plot_data = pd.melt(plot_data, id_vars=['age'], var_name='percentile', value_name='value')
-    fig = px.line(plot_data, x='age', y='value', color='percentile')
-    fig.write_html("result.html")
+    plot_scenarios(scenarios, config['age_starting'], config['age_sim_end'])
 
 
 if __name__ == '__main__':
