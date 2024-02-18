@@ -2,17 +2,40 @@ import numpy as np
 import pandas as pd
 import json
 import plotly.express as px
+from typing import Tuple
+
+
+def load_configs(config_file : str = 'config.json') -> dict:
+    config = json.load(open(config_file))
+    return config
+
+
+def calculate_transition_dates(age_sim_end: int, age_starting: int, age_retirement: int) -> Tuple[int, int]:
+    periods = (age_sim_end - age_starting)*12 + 1
+    drawdown_start_period = (age_retirement - age_starting)*12 + 1
+    return periods, drawdown_start_period
+
+
+def calculate_parameters_monthly(parameters_yearly: dict) -> dict:
+    parameters_monthly = {}
+    parameters_monthly['inflation_mean'] = parameters_yearly['inflation_mean']/12
+    parameters_monthly['inflation_std'] = parameters_yearly['inflation_std']/np.sqrt(12)
+    parameters_monthly['growth_mean'] = parameters_yearly['growth_mean']/12
+    parameters_monthly['growth_std'] = parameters_yearly['growth_std']/np.sqrt(12)
+    return parameters_monthly
 
 
 def calculate_scenarios():
-    config = json.load(open('config.json'))['person1']
-    config['growth_std'] = config['growth_std']/np.sqrt(12)  # fact sheets shows annulaised standard devivation...
-    periods = (config['age_sim_end'] - config['age_starting'])*12 + 1
-    drawdown_start_period = (config['age_retirement'] - config['age_starting'])*12 + 1
+    config = load_configs()
+    config = config['person1']  # TODO: loop through multiple
+    periods, drawdown_start_period = calculate_transition_dates(config['age_sim_end'], config['age_starting'], config['age_retirement'])
+    # config['growth_std'] = config['growth_std']/np.sqrt(12)  # fact sheets shows annulaised standard devivation...
+    parameters_monthly = calculate_parameters_monthly(config)
+
     size = (periods, config['number_of_runs'])
-    inflation = np.random.normal(config['inflation_mean'], config['inflation_std'], size=size)
-    growth = np.random.normal(config['growth_mean'], config['growth_std'], size=size)
-    delta_growth = (growth - inflation)/12
+    inflation = np.random.normal(parameters_monthly['inflation_mean'], parameters_monthly['inflation_std'], size=size)
+    growth = np.random.normal(parameters_monthly['growth_mean'], parameters_monthly['growth_std'], size=size)
+    delta_growth = growth - inflation
     scenarios = np.ones(size)
     scenarios[0,:] = config['amount_starting']
     for p in range(periods)[1:]:
@@ -29,7 +52,6 @@ def calculate_scenarios():
     plot_data = pd.melt(plot_data, id_vars=['age'], var_name='percentile', value_name='value')
     fig = px.line(plot_data, x='age', y='value', color='percentile')
     fig.write_html("result.html")
-
 
 
 if __name__ == '__main__':
