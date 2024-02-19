@@ -49,33 +49,38 @@ def calculate_scenarios(
     return scenarios
 
 
-def plot_scenarios(scenarios: np.array, age_starting: int, age_sim_end: int, percentiles: list = [2.5,10,25,50,75,90,97.5]) -> None:
+def plot_scenarios(
+            scenarios: np.array,
+            age_starting: int,
+            age_sim_end: int,
+            results_filename: str = 'results',
+            percentiles: list = [2.5,10,25,50,75,90,97.5]
+        ) -> None:
     scenario_stats = np.percentile(scenarios, percentiles, axis=1)
     plot_data = pd.DataFrame(scenario_stats.T, columns = [f"{p}" for p in percentiles])
     plot_data.head()
     plot_data['age'] = [f"{y:04}-{m:02}" for y in range(age_starting, age_sim_end+1) for m in range(1,13)][0:len(plot_data)]
     plot_data = pd.melt(plot_data, id_vars=['age'], var_name='percentile', value_name='value')
     fig = px.line(plot_data, x='age', y='value', color='percentile')
-    fig.write_html("result.html")
+    fig.write_html(f'{results_filename}.html')
 
 
 def main():
-    config = load_configs()
-    config = config['person1']  # TODO: loop through multiple
-    periods, drawdown_start_period = calculate_transition_dates(config['age_sim_end'], config['age_starting'], config['age_retirement'])
-    # config['growth_std'] = config['growth_std']/np.sqrt(12)  # fact sheets shows annulaised standard devivation...
-    parameters_monthly = calculate_parameters_monthly(config)
-    scenarios = calculate_scenarios(
-            periods,
-            drawdown_start_period,
-            parameters_monthly,
-            config['amount_starting'],
-            config['contribution_monthly'],
-            config['retirement_drawdown_monthly'],
-            config['number_of_runs']
-        )
-    
-    plot_scenarios(scenarios, config['age_starting'], config['age_sim_end'])
+    all_config = load_configs()
+    for scenario, config in  all_config.items():
+        print(f"running simulation for {scenario}")
+        periods, drawdown_start_period = calculate_transition_dates(config['age_sim_end'], config['age_starting'], config['age_retirement'])
+        parameters_monthly = calculate_parameters_monthly(config)
+        scenarios = calculate_scenarios(
+                periods,
+                drawdown_start_period,
+                parameters_monthly,
+                config['amount_starting'],
+                config['contribution_monthly'],
+                config['retirement_drawdown_monthly'],
+                config['number_of_runs']
+            )
+        plot_scenarios(scenarios, config['age_starting'], config['age_sim_end'], results_filename=scenario)
 
 
 if __name__ == '__main__':
