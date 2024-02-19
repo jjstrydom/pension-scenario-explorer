@@ -18,9 +18,9 @@ def calculate_transition_dates(age_sim_end: int, age_starting: int, age_retireme
 
 def calculate_parameters_monthly(parameters_yearly: dict) -> dict:
     parameters_monthly = {}
-    parameters_monthly['inflation_mean'] = parameters_yearly['inflation_mean']/12
+    parameters_monthly['inflation_mean'] = (1+ parameters_yearly['inflation_mean'])**(1/12) - 1
     parameters_monthly['inflation_std'] = parameters_yearly['inflation_std']/np.sqrt(12)
-    parameters_monthly['growth_mean'] = parameters_yearly['growth_mean']/12
+    parameters_monthly['growth_mean'] = (1+ parameters_yearly['growth_mean'])**(1/12) - 1
     parameters_monthly['growth_std'] = parameters_yearly['growth_std']/np.sqrt(12)
     return parameters_monthly
 
@@ -49,7 +49,7 @@ def calculate_scenarios(
     return scenarios
 
 
-def plot_scenarios(scenarios: np.array, age_starting: int, age_sim_end: int, percentiles: list = [1,10,25,50,75,90,99]) -> None:
+def plot_scenarios(scenarios: np.array, age_starting: int, age_sim_end: int, percentiles: list = [2.5,10,25,50,75,90,97.5]) -> None:
     scenario_stats = np.percentile(scenarios, percentiles, axis=1)
     plot_data = pd.DataFrame(scenario_stats.T, columns = [f"{p}" for p in percentiles])
     plot_data.head()
